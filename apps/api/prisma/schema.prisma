@@ -1,0 +1,317 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum IeltsPart {
+  part1
+  part2
+  part3
+}
+
+enum Difficulty {
+  easy
+  medium
+  hard
+}
+
+enum PracticeSessionStatus {
+  created
+  recording
+  audio_uploaded
+  transcribing
+  transcribed
+  transcript_confirmed
+  assessing
+  assessed
+  memory_saved
+  review_scheduled
+  completed
+  failed
+}
+
+enum QuestionSource {
+  curated
+  generated
+}
+
+enum OnboardingStatus {
+  pending
+  done
+}
+
+enum ReviewTargetType {
+  expression
+  mistake
+  question
+}
+
+enum ReviewStatus {
+  pending
+  completed
+  cancelled
+}
+
+enum ReviewResult {
+  remembered
+  fuzzy
+  forgot
+}
+
+enum MemoryMastery {
+  new
+  learning
+  mastered
+}
+
+enum MistakeType {
+  grammar
+  vocabulary
+  coherence
+  fluency
+}
+
+enum Severity {
+  low
+  medium
+  high
+}
+
+enum LlmPurpose {
+  assessment
+  memory
+  planner
+  review
+}
+
+model User {
+  id                   String             @id @default(uuid())
+  email                String             @unique
+  passwordHash         String             @map("password_hash")
+  targetBand           Decimal?           @map("target_band") @db.Decimal(3, 1)
+  currentBandEstimate  Decimal?           @map("current_band_estimate") @db.Decimal(3, 1)
+  examDate             DateTime?          @map("exam_date") @db.Date
+  timezone             String             @default("Asia/Shanghai")
+  nativeLanguage       String?            @map("native_language")
+  onboardingStatus     OnboardingStatus   @default(pending) @map("onboarding_status")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+  sessions             PracticeSession[]
+  answers              Answer[]
+  expressions          Expression[]
+  mistakes             Mistake[]
+  reviewTasks          ReviewTask[]
+  topicStats           TopicStat[]
+  usageLogs            LlmUsageLog[]
+  refreshTokens        RefreshToken[]
+
+  @@map("users")
+}
+
+model Question {
+  id          String            @id @default(uuid())
+  part        IeltsPart         @default(part1)
+  topic       String
+  difficulty  Difficulty
+  content     String
+  tags        String[]          @default([])
+  source      QuestionSource    @default(curated)
+  active      Boolean           @default(true)
+  contentHash String            @unique @map("content_hash")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  sessions    PracticeSession[]
+  answers     Answer[]
+
+  @@index([part, topic, active])
+  @@map("questions")
+}
+
+model PracticeSession {
+  id           String                @id @default(uuid())
+  userId       String                @map("user_id")
+  questionId   String                @map("question_id")
+  practiceDate DateTime              @map("practice_date") @db.Date
+  status       PracticeSessionStatus @default(created)
+  failedStage  String?               @map("failed_stage")
+  errorCode    String?               @map("error_code")
+  errorMessage String?               @map("error_message")
+  startedAt    DateTime              @default(now()) @map("started_at")
+  completedAt  DateTime?             @map("completed_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question     Question              @relation(fields: [questionId], references: [id])
+  mediaAsset   MediaAsset?
+  answer       Answer?
+  usageLogs    LlmUsageLog[]
+
+  @@unique([userId, practiceDate, questionId])
+  @@index([userId, practiceDate])
+  @@index([status])
+  @@map("practice_sessions")
+}
+
+model MediaAsset {
+  id          String          @id @default(uuid())
+  sessionId   String          @unique @map("session_id")
+  storageKey  String          @map("storage_key")
+  mimeType    String          @map("mime_type")
+  sizeBytes   Int             @map("size_bytes")
+  durationMs  Int             @map("duration_ms")
+  checksum    String?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  session     PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("media_assets")
+}
+
+model Answer {
+  id                    String          @id @default(uuid())
+  sessionId             String          @unique @map("session_id")
+  userId                String          @map("user_id")
+  questionId            String          @map("question_id")
+  rawTranscript         String          @map("raw_transcript")
+  confirmedTranscript   String?         @map("confirmed_transcript")
+  transcriptConfirmedAt DateTime?       @map("transcript_confirmed_at")
+  sttProvider           String?         @map("stt_provider")
+  sttConfidence         Float?          @map("stt_confidence")
+  durationMs            Int?            @map("duration_ms")
+  createdAt             DateTime        @default(now()) @map("created_at")
+  session               PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question              Question        @relation(fields: [questionId], references: [id])
+  feedback              Feedback?
+  expressions           Expression[]
+  mistakes              Mistake[]
+
+  @@index([userId, createdAt])
+  @@map("answers")
+}
+
+model Feedback {
+  id                    String   @id @default(uuid())
+  answerId              String   @unique @map("answer_id")
+  grammarScore          Decimal  @map("grammar_score") @db.Decimal(3, 1)
+  vocabularyScore       Decimal  @map("vocabulary_score") @db.Decimal(3, 1)
+  fluencyScore          Decimal  @map("fluency_score") @db.Decimal(3, 1)
+  coherenceScore        Decimal  @map("coherence_score") @db.Decimal(3, 1)
+  naturalnessScore      Decimal  @map("naturalness_score") @db.Decimal(3, 1)
+  bandScore             Decimal  @map("band_score") @db.Decimal(3, 1)
+  grammarComments       Json     @map("grammar_comments")
+  vocabularySuggestions Json     @map("vocabulary_suggestions")
+  nativeVersion         String   @map("native_version")
+  band7Version          String   @map("band7_version")
+  rationale             Json
+  model                 String
+  promptVersion         String   @map("prompt_version")
+  rawResponse           Json     @map("raw_response")
+  createdAt             DateTime @default(now()) @map("created_at")
+  answer                Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+  @@map("feedback")
+}
+
+model Expression {
+  id        String        @id @default(uuid())
+  userId    String        @map("user_id")
+  answerId  String?       @map("answer_id")
+  text      String
+  meaning   String
+  example   String
+  topic     String?
+  mastery   MemoryMastery @default(new)
+  createdAt DateTime      @default(now()) @map("created_at")
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answer    Answer?       @relation(fields: [answerId], references: [id], onDelete: SetNull)
+
+  @@index([userId, mastery])
+  @@map("expressions")
+}
+
+model Mistake {
+  id          String     @id @default(uuid())
+  userId      String     @map("user_id")
+  answerId    String?    @map("answer_id")
+  type        MistakeType
+  spanText    String     @map("span_text")
+  correction  String
+  explanation String
+  severity    Severity
+  createdAt   DateTime   @default(now()) @map("created_at")
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answer      Answer?    @relation(fields: [answerId], references: [id], onDelete: SetNull)
+
+  @@index([userId, type, severity])
+  @@map("mistakes")
+}
+
+model ReviewTask {
+  id           String           @id @default(uuid())
+  userId       String           @map("user_id")
+  targetType   ReviewTargetType @map("target_type")
+  targetId     String           @map("target_id")
+  prompt       String
+  dueAt        DateTime         @map("due_at")
+  intervalDays Int              @default(1) @map("interval_days")
+  easeFactor   Float            @default(2.5) @map("ease_factor")
+  repetition   Int              @default(0)
+  status       ReviewStatus     @default(pending)
+  lastResult   ReviewResult?    @map("last_result")
+  completedAt  DateTime?        @map("completed_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, dueAt])
+  @@map("review_tasks")
+}
+
+model TopicStat {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  topic           String
+  attemptCount    Int      @default(0) @map("attempt_count")
+  avgBand         Decimal? @map("avg_band") @db.Decimal(3, 1)
+  lastPracticedAt DateTime? @map("last_practiced_at")
+  weakScore       Float    @default(0) @map("weak_score")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topic])
+  @@map("topic_stats")
+}
+
+model LlmUsageLog {
+  id             String           @id @default(uuid())
+  userId         String           @map("user_id")
+  sessionId      String?          @map("session_id")
+  purpose        LlmPurpose
+  provider       String
+  model          String
+  promptVersion  String           @map("prompt_version")
+  inputTokens    Int              @default(0) @map("input_tokens")
+  outputTokens   Int              @default(0) @map("output_tokens")
+  latencyMs      Int              @default(0) @map("latency_ms")
+  costUsd        Decimal          @default(0) @map("cost_usd") @db.Decimal(10, 6)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session        PracticeSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, purpose, createdAt])
+  @@map("llm_usage_logs")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("refresh_tokens")
+}

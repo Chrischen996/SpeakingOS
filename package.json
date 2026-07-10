@@ -1,0 +1,29 @@
+{
+  "name": "speakingos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SpeakingOS MVP monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n web,api,worker -c blue,green,magenta \"npm run dev -w @speakingos/web\" \"npm run start:dev -w @speakingos/api\" \"npm run start:dev -w @speakingos/worker\"",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write .",
+    "prisma:generate": "npm run prisma:generate -w @speakingos/api",
+    "dev:infra": "docker compose -f infra/compose/docker-compose.yml up -d",
+    "stop:infra": "docker compose -f infra/compose/docker-compose.yml down"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=18.20.0",
+    "npm": ">=10.0.0"
+  }
+}
