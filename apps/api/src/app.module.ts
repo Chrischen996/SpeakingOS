@@ -1,6 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { fileURLToPath } from 'node:url';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -11,11 +12,19 @@ import { ReviewModule } from './modules/review/review.module.js';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    BullModule.forRoot({
-      connection: {
-        host: process.env.REDIS_HOST ?? 'localhost',
-        port: Number(process.env.REDIS_PORT ?? 6379),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: fileURLToPath(new URL('../../../.env', import.meta.url)) }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const redisUrl = new URL(config.get<string>('REDIS_URL') ?? 'redis://localhost:6379');
+        return {
+          connection: {
+            host: redisUrl.hostname,
+            port: Number(redisUrl.port || 6379),
+            ...(redisUrl.username ? { username: redisUrl.username } : {}),
+            ...(redisUrl.password ? { password: redisUrl.password } : {}),
+          },
+        };
       },
     }),
     PrismaModule,

@@ -21,7 +21,7 @@ export class PracticeController {
   }
 
   @Post('sessions/:id/audio/complete')
-  completeAudio(@Param('id') id: string, @Body() body: Record<string, unknown>) {
+  completeAudio(@Param('id') id: string, @Body() body: unknown) {
     return this.practiceService.completeAudio(id, body);
   }
 
@@ -31,8 +31,8 @@ export class PracticeController {
   }
 
   @Patch('sessions/:id/transcript')
-  confirmTranscript(@Param('id') id: string, @Body() body: { text: string; confirmed: true }) {
-    return this.practiceService.confirmTranscript(id, body.text);
+  confirmTranscript(@Param('id') id: string, @Body() body: unknown) {
+    return this.practiceService.confirmTranscript(id, body);
   }
 
   @Post('sessions/:id/assess')

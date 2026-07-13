@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AppHeader } from '../components/app-header';
 
 async function getTodayPractice() {
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001/api/v1';
@@ -7,7 +8,7 @@ async function getTodayPractice() {
     if (!res.ok) throw new Error(`API returned ${res.status}`);
     return res.json() as Promise<{
       date: string;
-      newQuestion: { questionId: string; content: string; topic: string; alreadyCompleted: boolean };
+      newQuestion: { questionId: string; content: string; topic: string; difficulty: string; alreadyCompleted: boolean };
       dueReviews: unknown[];
     }>;
   } catch {
@@ -17,6 +18,7 @@ async function getTodayPractice() {
         questionId: '11111111-1111-1111-1111-111111111111',
         content: 'Do you enjoy drinking coffee?',
         topic: 'Food and drink',
+        difficulty: 'easy',
         alreadyCompleted: false,
       },
       dueReviews: [],
@@ -28,33 +30,87 @@ export default async function HomePage() {
   const today = await getTodayPractice();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-8 py-10">
-      <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
-        <p className="text-sm font-medium uppercase tracking-wide text-indigo-600">SpeakingOS MVP</p>
-        <h1 className="mt-3 text-4xl font-bold tracking-tight">Practice one answer. Build long-term memory.</h1>
-        <p className="mt-4 max-w-2xl text-lg text-slate-600">
-          Today&apos;s loop: record, confirm transcript, get feedback, save memory, and schedule review.
-        </p>
-      </section>
+    <>
+      <AppHeader active="today" />
+      <main className="page-shell">
+        <header className="page-heading">
+          <div>
+            <p className="eyebrow">Daily plan</p>
+            <h1 className="page-title">Today&apos;s practice</h1>
+            <p className="page-subtitle">One focused answer, followed by the reviews that matter most.</p>
+          </div>
+          <div className="date-block">
+            <strong>{today.date}</strong>
+            <span>Asia / Shanghai</span>
+          </div>
+        </header>
 
-      <section className="grid gap-6 md:grid-cols-[2fr_1fr]">
-        <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <p className="text-sm text-slate-500">{today.date} · IELTS Speaking Part 1 · {today.newQuestion.topic}</p>
-          <h2 className="mt-3 text-2xl font-semibold">{today.newQuestion.content}</h2>
-          <Link
-            href={`/practice/session/new?questionId=${today.newQuestion.questionId}`}
-            className="mt-6 inline-flex rounded-full bg-indigo-600 px-5 py-3 font-semibold text-white transition hover:bg-indigo-500"
-          >
-            Start practice
-          </Link>
-        </div>
+        <section className="metric-strip" aria-label="Learning summary">
+          <div className="metric">
+            <span className="metric__label">Current streak</span>
+            <span className="metric__value">1 <small>day</small></span>
+          </div>
+          <div className="metric">
+            <span className="metric__label">Latest estimate</span>
+            <span className="metric__value">6.5 <small>band</small></span>
+          </div>
+          <div className="metric">
+            <span className="metric__label">Weekly answers</span>
+            <span className="metric__value">3 <small>of 7</small></span>
+          </div>
+          <div className="metric">
+            <span className="metric__label">Due reviews</span>
+            <span className="metric__value">{today.dueReviews.length}</span>
+          </div>
+        </section>
 
-        <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <h2 className="text-xl font-semibold">Due reviews</h2>
-          <p className="mt-3 text-4xl font-bold">{today.dueReviews.length}</p>
-          <p className="mt-2 text-slate-600">Review tasks will appear here after completed sessions.</p>
-        </div>
-      </section>
-    </main>
+        <section className="today-grid">
+          <article className="practice-brief">
+            <div className="brief-meta">
+              <span className="status-label">Ready</span>
+              <span>IELTS Speaking Part 1</span>
+              <span>{today.newQuestion.topic}</span>
+              <span>{today.newQuestion.difficulty}</span>
+            </div>
+            <h2 className="brief-question">{today.newQuestion.content}</h2>
+            <div className="brief-footer">
+              <p className="brief-note">Suggested answer time: 30-45 seconds</p>
+              <Link className="button button--primary" href={`/practice/session/new?questionId=${today.newQuestion.questionId}`}>
+                Start practice
+              </Link>
+            </div>
+          </article>
+
+          <aside className="review-panel">
+            <p className="panel-kicker">Review queue</p>
+            <p className="review-count">{today.dueReviews.length}</p>
+            <p className="review-count-label">items due today</p>
+            <p className="review-empty">
+              {today.dueReviews.length === 0
+                ? 'You are caught up. New review items appear after an assessed answer.'
+                : 'Complete your due reviews after today\'s speaking answer.'}
+            </p>
+          </aside>
+        </section>
+
+        <section className="focus-band" aria-labelledby="focus-title">
+          <div>
+            <p className="panel-kicker">Recent profile</p>
+            <h2 id="focus-title">Scoring focus</h2>
+          </div>
+          <div>
+            <div className="focus-item">
+              <span>Fluency</span><span className="focus-track"><span className="focus-fill" style={{ width: '67%' }} /></span><strong>6.0</strong>
+            </div>
+            <div className="focus-item">
+              <span>Vocabulary</span><span className="focus-track"><span className="focus-fill" style={{ width: '72%' }} /></span><strong>6.5</strong>
+            </div>
+            <div className="focus-item">
+              <span>Coherence</span><span className="focus-track"><span className="focus-fill" style={{ width: '72%' }} /></span><strong>6.5</strong>
+            </div>
+          </div>
+        </section>
+      </main>
+    </>
   );
 }

@@ -2,6 +2,20 @@ import { PrismaClient } from '@prisma/client';
 import { createHash } from 'node:crypto';
 
 const prisma = new PrismaClient();
+const demoUserId = '00000000-0000-0000-0000-000000000001';
+
+await prisma.user.upsert({
+  where: { id: demoUserId },
+  update: {},
+  create: {
+    id: demoUserId,
+    email: 'demo@speakingos.local',
+    passwordHash: 'development-only-demo-user',
+    targetBand: 7,
+    timezone: 'Asia/Shanghai',
+    onboardingStatus: 'done',
+  },
+});
 
 const questions = [
   { topic: 'Food and drink', difficulty: 'easy' as const, content: 'Do you enjoy drinking coffee?' },

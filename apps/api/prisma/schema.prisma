@@ -149,7 +149,7 @@ model PracticeSession {
   answer       Answer?
   usageLogs    LlmUsageLog[]
 
-  @@unique([userId, practiceDate, questionId])
+  @@unique([userId, practiceDate])
   @@index([userId, practiceDate])
   @@index([status])
   @@map("practice_sessions")
