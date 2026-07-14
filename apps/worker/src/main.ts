@@ -5,6 +5,9 @@ import { config } from 'dotenv';
 import { fileURLToPath } from 'node:url';
 import { FakeAssessmentAgent } from './agents/fake-assessment.agent.js';
 import { FakeSpeechTool } from './tools/fake-speech.tool.js';
+import { OpenAiAssessmentAgent } from './agents/openai-assessment.agent.js';
+import { OpenAiSpeechTool, type SpeechTool } from './tools/openai-speech.tool.js';
+import type { AssessmentAgent } from './agents/openai-assessment.agent.js';
 
 config({ path: fileURLToPath(new URL('../../../.env', import.meta.url)) });
 
@@ -16,8 +19,8 @@ const connection = {
 };
 
 const prisma = new PrismaClient();
-const speechTool = new FakeSpeechTool();
-const assessmentAgent = new FakeAssessmentAgent();
+const speechTool: SpeechTool = process.env.SPEECH_PROVIDER === 'openai' ? new OpenAiSpeechTool() : new FakeSpeechTool();
+const assessmentAgent: AssessmentAgent = process.env.LLM_PROVIDER === 'openai' ? new OpenAiAssessmentAgent() : new FakeAssessmentAgent();
 const queueEvents: QueueEvents[] = [];
 const workers: Worker[] = [];
 
@@ -131,7 +134,7 @@ workers.push(
               nativeVersion: result.native_version,
               band7Version: result.band7_version,
               rationale: result.rationale,
-              model: 'fake-assessment-v1',
+              model: assessmentAgent.model,
               promptVersion: 'assessment/v1',
               rawResponse: result as Prisma.InputJsonValue,
             },
@@ -148,7 +151,7 @@ workers.push(
               nativeVersion: result.native_version,
               band7Version: result.band7_version,
               rationale: result.rationale,
-              model: 'fake-assessment-v1',
+              model: assessmentAgent.model,
               promptVersion: 'assessment/v1',
               rawResponse: result as Prisma.InputJsonValue,
             },

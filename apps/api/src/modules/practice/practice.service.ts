@@ -4,6 +4,7 @@ import { confirmAudioUploadRequestSchema, updateTranscriptRequestSchema } from '
 import type { Queue } from 'bullmq';
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { createPresignedPutUrl } from './object-storage.js';
 
 const demoUserId = '00000000-0000-0000-0000-000000000001';
 
@@ -99,10 +100,11 @@ export class PracticeService {
       throw new ConflictException('Audio cannot be replaced after the transcript is confirmed');
     }
     await this.prisma.practiceSession.update({ where: { id: sessionId }, data: { status: 'recording' } });
+    const storageKey = `audio/${sessionId}.webm`;
     return {
       sessionId,
-      storageKey: `audio/${sessionId}.webm`,
-      uploadUrl: `http://localhost:9000/speakingos-audio/audio/${sessionId}.webm`,
+      storageKey,
+      uploadUrl: createPresignedPutUrl(storageKey),
       expiresInSeconds: 600,
     };
   }

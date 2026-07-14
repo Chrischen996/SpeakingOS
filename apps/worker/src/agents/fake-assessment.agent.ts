@@ -1,6 +1,8 @@
 import type { AssessmentResult } from '@speakingos/shared';
+import type { AssessmentAgent } from './openai-assessment.agent.js';
 
-export class FakeAssessmentAgent {
+export class FakeAssessmentAgent implements AssessmentAgent {
+  readonly model = 'fake-assessment-v1';
   async evaluate(input: { question: string; transcript: string }): Promise<AssessmentResult> {
     return {
       scores: {
